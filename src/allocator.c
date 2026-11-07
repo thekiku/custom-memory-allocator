@@ -6,15 +6,14 @@
 #include <string.h>
 
 #ifndef _WIN32
-#error "this allocator is only supported on windows"
 #endif
 
 #include <windows.h>
 
 /*
- * every allocation starts with one of these headers. the caller receives
- * the bytes immediately after the header, so the header can be found again
- * when my_free is called.
+every allocation starts with one of these headers. the caller receives
+the bytes immediately after the header, so the header can be found again
+when my_free is called.
  */
 typedef struct block {
     size_t size;
@@ -24,11 +23,11 @@ typedef struct block {
     max_align_t alignment;
 } block_t;
 
-/* all blocks are kept in address order so neighbouring blocks can be joined */
+//all blocks are kept in address order so neighbouring blocks can be joined 
 static block_t *first_block = NULL;
 static block_t *last_block = NULL;
 
-/* keep sizes aligned for every type, not only for char arrays */
+// keep sizes aligned for every type, not only for char arrays 
 static size_t align_size(size_t size)
 {
     const size_t alignment = sizeof(max_align_t);
@@ -41,7 +40,7 @@ static size_t align_size(size_t size)
     return size + alignment - remainder;
 }
 
-/* reject sizes that would wrap around while adding allocator metadata */
+//reject sizes that would wrap around while adding allocator metadata
 static int prepare_size(size_t requested, size_t *size)
 {
     if (requested == 0 || requested > SIZE_MAX - (sizeof(max_align_t) - 1)) {
@@ -52,13 +51,13 @@ static int prepare_size(size_t requested, size_t *size)
     return *size <= SIZE_MAX - sizeof(block_t);
 }
 
-/* ask windows for a private region of readable and writable memory */
+//ask windows for a private region of readable and writable memory
 static void *request_space(size_t size)
 {
     return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 }
 
-/* find a reusable block with enough space */
+//find a reusable block with enough space 
 static block_t *find_free_block(size_t size)
 {
     block_t *current = first_block;
@@ -73,7 +72,7 @@ static block_t *find_free_block(size_t size)
     return NULL;
 }
 
-/* add a newly obtained block to the end of the address-ordered list */
+//add a newly obtained block to the end of the address ordered list 
 static void add_block(block_t *block)
 {
     block->prev = last_block;
@@ -89,7 +88,7 @@ static void add_block(block_t *block)
     last_block = block;
 }
 
-/* split a large free block when the remainder can hold another block */
+//split a large free block when the remainder can hold another block 
 static void split_block(block_t *block, size_t size)
 {
     block_t *new_block;
@@ -115,13 +114,13 @@ static void split_block(block_t *block, size_t size)
     block->size = size;
 }
 
-/* two blocks are neighbours when the second starts after the first payload */
+//two blocks are neighbours when the second starts after the first payload 
 static int are_adjacent(block_t *first, block_t *second)
 {
     return (char *)(first + 1) + first->size == (char *)second;
 }
 
-/* merge a free block with the free block directly after it */
+//merge a free block with the free block directly after it 
 static void merge_with_next(block_t *block)
 {
     block_t *next = block->next;
@@ -140,7 +139,7 @@ static void merge_with_next(block_t *block)
     }
 }
 
-/* join free neighbours around a block after it is released */
+//join free neighbours around a block after it is released 
 static void coalesce(block_t *block)
 {
     if (block->next != NULL && block->next->free) {
@@ -152,7 +151,7 @@ static void coalesce(block_t *block)
     }
 }
 
-/* return the header only when ptr is one of our allocation payloads */
+//return the header only when ptr is one of our allocation payloads 
 static block_t *block_from_pointer(void *ptr)
 {
     block_t *current = first_block;
